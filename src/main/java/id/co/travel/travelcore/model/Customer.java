@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class Customer {
-    private int customerId;
+    private int id;
     private String name;
     private String gender;
     private String email;

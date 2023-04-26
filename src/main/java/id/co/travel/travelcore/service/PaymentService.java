@@ -43,6 +43,7 @@ public class PaymentService implements IPaymentService {
 
         LOGGER.info("Get data Customer");
         Customer customer = getDataCustomer(payment.getCustomerId());
+        LOGGER.info("Customer " + customer);
 
         LOGGER.info("Vefify Packages is available");
         Optional<PackageHoliday> optionalPackageHoliday = holidayService.findPackagesById(payment.getPackageId());
