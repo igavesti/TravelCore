@@ -1,15 +1,19 @@
 package id.co.travel.travelcore.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import id.co.travel.travelcore.config.ApplicationProperties;
 import id.co.travel.travelcore.exception.CustomException;
 import id.co.travel.travelcore.model.Card;
 import id.co.travel.travelcore.model.Customer;
+import id.co.travel.travelcore.model.Notif;
 import id.co.travel.travelcore.model.Payment;
 import id.co.travel.travelcore.repository.model.PackageHoliday;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -24,9 +28,17 @@ public class PaymentService implements IPaymentService {
     private ApplicationProperties applicationProperties;
     @Autowired
     private RestTemplate restTemplate;
+    @Autowired
+    private KafkaTemplate<String, String> kafkaTemplate;
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Value("${producer.topic.notif}")
+    private String topicNotif;
+
 
     @Override
-    public String submit(Payment payment) throws CustomException {
+    public String submit(Payment payment) throws Exception {
         LOGGER.info("Submit payment");
 
         LOGGER.info("Get data Customer");
@@ -37,12 +49,18 @@ public class PaymentService implements IPaymentService {
         if (optionalPackageHoliday.isEmpty()) {
             throw new CustomException("Packages is not available");
         }
+        PackageHoliday packageHoliday = optionalPackageHoliday.get();
 
         LOGGER.info("Verification Payment");
         dummyVerificationPayment(payment.getCard());
 
         LOGGER.info("Put Notif Email Kafka");
-        //TODO put kafka
+        Notif notif = new Notif();
+        notif.setTitle("Payment Success Package " + packageHoliday.getTitle());
+        notif.setBody("Terima kasih\nPayment Success Package " + packageHoliday.getTitle() + "");
+        notif.setEmail(customer.getEmail());
+        notif.setDescription("Isi Deskripsi email bla bla : " + packageHoliday.getDescription());
+        kafkaTemplate.send(topicNotif, objectMapper.writeValueAsString(notif));
 
         LOGGER.info("Success");
         return "Success";
