@@ -9,4 +9,6 @@ public interface IHolidayService {
     List<PackageHoliday> findAllPackages();
 
     Optional<PackageHoliday> findPackagesById(int id);
+
+    void updatePackagesById(PackageHoliday packageHoliday);
 }

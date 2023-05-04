@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Configuration;
 public class ApplicationProperties {
     @Value("${url.get.data.customer}")
     private String urlGetDataCustomer;
+    @Value("${url.crypto.payment}")
+    private String urlCryptoPayment;
 
     @Value("${dummy.service.response}")
     private String dummyServiceResponse;

@@ -2,16 +2,16 @@ package id.co.travel.travelcore.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import id.co.travel.travelcore.config.ApplicationProperties;
+import id.co.travel.travelcore.constants.Constants;
 import id.co.travel.travelcore.exception.CustomException;
-import id.co.travel.travelcore.model.Card;
-import id.co.travel.travelcore.model.Customer;
-import id.co.travel.travelcore.model.Notif;
-import id.co.travel.travelcore.model.Payment;
+import id.co.travel.travelcore.model.*;
 import id.co.travel.travelcore.repository.model.PackageHoliday;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -52,8 +52,15 @@ public class PaymentService implements IPaymentService {
         }
         PackageHoliday packageHoliday = optionalPackageHoliday.get();
 
+        if(packageHoliday.getQuotaLeft() <= 0) {
+            throw new CustomException("Quota packages is not available");
+        }
+
         LOGGER.info("Verification Payment");
-        dummyVerificationPayment(payment.getCard());
+        dummyVerificationPayment(payment);
+
+        packageHoliday.setQuotaLeft(packageHoliday.getQuotaLeft() - 1);
+        holidayService.updatePackagesById(packageHoliday);
 
         LOGGER.info("Put Notif Email Kafka");
         Notif notif = new Notif();
@@ -77,10 +84,28 @@ public class PaymentService implements IPaymentService {
         }
     }
 
-    private void dummyVerificationPayment(Card card) throws CustomException {
-        //Dummy Call Service Verification Payment;
-        if (!applicationProperties.getDummyServiceResponse().equals("OK")) {
-            throw new CustomException("Payment Failed");
+    private void dummyVerificationPayment(Payment payment) throws CustomException {
+        if(payment.getPaymentType() == Constants.PAYMENT_TYPE.CARD_TYPE) {
+            //Dummy Call Service Verification Card Payment;
+            if (!applicationProperties.getDummyServiceResponse().equals("OK")) {
+                throw new CustomException("Payment Failed");
+            }
+            LOGGER.info("Verification Payment Card Success");
+        } else if(payment.getPaymentType() == Constants.PAYMENT_TYPE.CRYPTO_TYPE){
+            try {
+                ResponseEntity<CryptoPaymentResponse> response
+                        = restTemplate.exchange(applicationProperties.getUrlCryptoPayment(), HttpMethod.PUT, new HttpEntity<>(payment.getCrypto(), null), CryptoPaymentResponse.class);
+                LOGGER.info("Response Payment Crypto : "+objectMapper.writeValueAsString(response));
+                if(response.getBody() != null && response.getBody().isStatus()){
+                    LOGGER.info("Verification Payment Crypto Success");
+                }
+                else {
+                    LOGGER.info("Payment Failed : "+response.getBody().getMessage());
+                    throw new CustomException("Payment Failed");
+                }
+            } catch (Exception e) {
+                throw new CustomException(e.getMessage());
+            }
         }
     }
 }

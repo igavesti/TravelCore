@@ -28,4 +28,11 @@ public class HolidayService implements IHolidayService{
         LOGGER.info("Find packages by id");
         return packageHolidayRepository.findById(id);
     }
+
+    @Override
+    public void updatePackagesById(PackageHoliday packageHoliday) {
+        LOGGER.info("Update packages by id");
+        packageHolidayRepository.save(packageHoliday);
+        LOGGER.info("Update packages by id Success");
+    }
 }

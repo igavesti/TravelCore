@@ -21,4 +21,6 @@ public class PackageHoliday {
     private String imageUrl;
     @Column(name = "rating")
     private String rating;
+    @Column(name = "quota_left")
+    private int quotaLeft;
 }
