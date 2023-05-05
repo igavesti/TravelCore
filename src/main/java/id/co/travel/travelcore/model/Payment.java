@@ -9,4 +9,5 @@ public class Payment {
     private int paymentType;
     private Card card;
     private Crypto crypto;
+    private CryptoCredential cryptoCredential;
 }

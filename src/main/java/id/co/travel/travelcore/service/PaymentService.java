@@ -6,15 +6,18 @@ import id.co.travel.travelcore.constants.Constants;
 import id.co.travel.travelcore.exception.CustomException;
 import id.co.travel.travelcore.model.*;
 import id.co.travel.travelcore.repository.model.PackageHoliday;
+import org.apache.tomcat.util.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Optional;
@@ -94,7 +97,7 @@ public class PaymentService implements IPaymentService {
         } else if(payment.getPaymentType() == Constants.PAYMENT_TYPE.CRYPTO_TYPE){
             try {
                 ResponseEntity<CryptoPaymentResponse> response
-                        = restTemplate.exchange(applicationProperties.getUrlCryptoPayment(), HttpMethod.PUT, new HttpEntity<>(payment.getCrypto(), null), CryptoPaymentResponse.class);
+                        = restTemplate.exchange(applicationProperties.getUrlCryptoPayment(), HttpMethod.PUT, new HttpEntity<>(payment.getCrypto(), createHeaders(payment.getCryptoCredential())), CryptoPaymentResponse.class);
                 LOGGER.info("Response Payment Crypto : "+objectMapper.writeValueAsString(response));
                 if(response.getBody() != null && response.getBody().isStatus()){
                     LOGGER.info("Verification Payment Crypto Success");
@@ -103,9 +106,20 @@ public class PaymentService implements IPaymentService {
                     LOGGER.info("Payment Failed : "+response.getBody().getMessage());
                     throw new CustomException("Payment Failed");
                 }
+            } catch (HttpClientErrorException e) {
+                LOGGER.info("HttpClientErrorException : "+e);
+                throw new CustomException("Unauthorized : "+e.getMessage());
             } catch (Exception e) {
                 throw new CustomException(e.getMessage());
             }
         }
+    }
+    private HttpHeaders createHeaders(CryptoCredential cryptoCredential){
+        return new HttpHeaders() {{
+            String auth = cryptoCredential.getUserId() + ":" + cryptoCredential.getPassword();
+            byte[] encodedAuth = Base64.encodeBase64(auth.getBytes(), false);
+            String authHeader = "Basic " + new String( encodedAuth );
+            set( "Authorization", authHeader );
+        }};
     }
 }
